@@ -556,7 +556,7 @@ a{color:inherit;text-decoration:none}
   .overlay.open{display:block;}
   .mob-btn{display:flex;}
   .main{margin-left:0;}
-  .page{padding:56px 16px 56px;}
+  .page{display:none;padding:56px 16px 56px;}.page.on{display:block;}
   .home-grid,.lesson-grid,.dex-grid,.dc-grid,.ifs-grid,.stop-grid,.reward-grid,.energy-grid{grid-template-columns:1fr;}
   .anchor-grid{grid-template-columns:1fr;}
   .stat-grid{grid-template-columns:1fr 1fr;}
@@ -570,8 +570,7 @@ a{color:inherit;text-decoration:none}
   .overlay.open{display:block;}
   .mob-btn{display:flex;}
   .main{margin-left:0;}
-  .page{padding:56px 16px 56px;}
-  .home-grid,.lesson-grid,.dex-grid,.dc-grid,.ifs-grid,.stop-grid,.reward-grid,.energy-grid{grid-template-columns:1fr;}
+    .home-grid,.lesson-grid,.dex-grid,.dc-grid,.ifs-grid,.stop-grid,.reward-grid,.energy-grid{grid-template-columns:1fr;}
   .anchor-grid{grid-template-columns:1fr;}
   .stat-grid{grid-template-columns:1fr 1fr;}
   .streak-summary{grid-template-columns:1fr 1fr 1fr;}
@@ -2262,14 +2261,33 @@ function renderH(){
 document.getElementById("hInput").addEventListener("keydown",e=>{if(e.key==="Enter")addH()});
 
 // INIT
-// Init: hide all pages, show home
-document.querySelectorAll(".page").forEach(function(p){
-  p.style.display="none";
-  p.classList.remove("on");
+// Init: run after DOM ready
+window.addEventListener("DOMContentLoaded", function(){
+  document.querySelectorAll(".page").forEach(function(p){
+    p.style.display="none";
+    p.classList.remove("on");
+  });
+  var hp = document.getElementById("page-home");
+  if(hp){ hp.style.display="block"; hp.classList.add("on"); }
+  renderLessons();
+  renderH();
+  // (initialized in DOMContentLoaded)
+  renderRoutineBlocks("soloBlocks", soloDay);
+  renderRoutineBlocks("dadBlocks", dadDay);
+  renderRoutineBlocks("wkndBlocks", wkndDay);
+  renderHabitBuilder();
+  loadRoutineNotes();
+  bndLoad(); renderBoundaries();
+  htLoad(); renderHT();
+  nbLoad(); renderNB();
+  ibLoadSaved();
+  renderExercises("exA", exData.A);
+  renderExercises("exB", exData.B);
+  renderExercises("exC", exData.C);
+  renderWeekGrid();
+  renderFitTracker();
+  renderBDNF();
 });
-var hp = document.getElementById("page-home");
-if(hp){ hp.style.display="block"; hp.classList.add("on"); }
-renderLessons();renderH();
 
 // ── DAILY ROUTINE ────────────────────────────────────────────────
 const soloDay = [
@@ -2930,7 +2948,7 @@ function renderBudget() {
   renderFullPicture();
 }
 
-renderBudget();
+// (initialized in DOMContentLoaded)
 
 // FITNESS DATA
 const exData = {
@@ -3047,23 +3065,14 @@ function renderBDNF() {
 }
 function toggleBDNF(i) { bdnfChecks[i] = !bdnfChecks[i]; renderBDNF(); }
 
-// Init all fitness
-renderExercises('exA', exData.A);
-renderExercises('exB', exData.B);
-renderExercises('exC', exData.C);
-renderWeekGrid();
-renderFitTracker();
-renderBDNF();
+// (initialized in DOMContentLoaded)
+
 
 // Init budget (must be after budgetState definition)
-renderBudget();
+// (initialized in DOMContentLoaded)
 
 // Init routine (must be after soloDay/dadDay/wkndDay definitions)
-renderRoutineBlocks('soloBlocks', soloDay);
-renderRoutineBlocks('dadBlocks', dadDay);
-renderRoutineBlocks('wkndBlocks', wkndDay);
-renderHabitBuilder();
-loadRoutineNotes();
+// (initialized in DOMContentLoaded)
 
 </script>
 
