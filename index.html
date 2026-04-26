@@ -15,7 +15,7 @@
 <style>
 :root{--bg:#0d0d0f;--sur:#141418;--sur2:#1c1c22;--bdr:#2a2a35;--acc:#e8622a;--acc2:#f0a05a;--txt:#eeeef0;--mut:#7a7a8a;--grn:#4caf7d;--red:#e85a5a;--blu:#5a8ee8;--nav:220px}
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--txt);font-family:"DM Sans",sans-serif;min-height:100vh;display:flex;overflow-x:hidden}
+body{background:var(--bg);color:var(--txt);font-family:"DM Sans",sans-serif;min-height:100vh;overflow-x:hidden}
 a{color:inherit;text-decoration:none}
 
 /* NAV */
@@ -36,7 +36,7 @@ a{color:inherit;text-decoration:none}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99}
 
 /* MAIN */
-.main{margin-left:var(--nav);flex:1;min-width:0;overflow-x:hidden;position:relative}
+.main{margin-left:var(--nav);overflow-x:hidden}
 .page{display:none!important;padding:32px 28px 72px;max-width:780px;animation:fu .35s ease both;width:100%;box-sizing:border-box}
 .page.on{display:block!important}
 @keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
@@ -557,12 +557,11 @@ a{color:inherit;text-decoration:none}
   .home-grid,.lesson-grid,.dex-grid,.dc-grid,.ifs-grid,.stop-grid,.reward-grid,.energy-grid{grid-template-columns:1fr}
   .anchor-grid{grid-template-columns:1fr}.stat-grid{grid-template-columns:1fr 1fr}
 }
-.page{display:none!important;width:100%!important;box-sizing:border-box!important}
+.page{display:none!important;width:100%!important;box-sizing:border-box!important;float:none!important;position:static!important}
 .page.on{display:block!important;width:100%!important}
 @media(max-width:700px){
-  body{display:block!important}
-  .main{display:block!important;margin-left:0!important;width:100%!important}
-  .page{display:none!important;width:100%!important}
+  .main{margin-left:0!important;display:block!important;width:100%!important}
+  .page{display:none!important;width:100%!important;float:none!important}
   .page.on{display:block!important;width:100%!important}
 }
 </style>
@@ -1072,8 +1071,8 @@ a{color:inherit;text-decoration:none}
     <p style="font-size:13px;color:var(--txt);line-height:1.7;margin:0">You will not always catch it at Level 2 or 3. Sometimes you will be at Level 5 before you knew it was coming — especially early in this work. <strong style="color:var(--acc)">That is not failure. That is the starting point.</strong> The goal is to catch it one level earlier each time. That is the whole practice.</p>
   </div>
 
-</div></div><span style="font-size:12px;color:var(--mut);margin-left:8px">Dog is out. Damage control only.</span></div>
-  </div></div></div>
+</div>
+  </div>
   <div class="dog-phase"><div class="dph"><div class="dph-icon">🤝</div><div><div class="dph-lbl">Skill 03</div><div class="dph-title">Talk To Your Inner Dog</div></div></div>
   <div class="dpb"><p>Fighting your protective parts doesn't work — they dig in harder. Acknowledge them instead. When you feel the protector rising, speak to him directly — internally.</p>
   <div class="dog-script"><div class="ds-title">📝 The IFS Check-In Script</div><div class="ds-line">When you feel him rising:</div><div class="ds-quote">I see you. I know you're trying to protect me. I've got this one — you can stand down.</div><div class="ds-line">When he's already out:</div><div class="ds-quote">Something in me went into protection mode. Let me figure out what it was protecting me from.</div></div></div></div>
