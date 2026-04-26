@@ -38,6 +38,7 @@ a{color:inherit;text-decoration:none}
 /* MAIN */
 .main{margin-left:var(--nav);min-height:100vh;}
 .page{display:none;padding:32px 28px 72px;max-width:780px;box-sizing:border-box;}
+#page-home{display:block;}
 .page.on{display:block;}
 @keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
@@ -2261,32 +2262,36 @@ function renderH(){
 document.getElementById("hInput").addEventListener("keydown",e=>{if(e.key==="Enter")addH()});
 
 // INIT
-// Init: run after DOM ready
-window.addEventListener("DOMContentLoaded", function(){
-  document.querySelectorAll(".page").forEach(function(p){
-    p.style.display="none";
-    p.classList.remove("on");
-  });
+// Init: runs immediately (script is at bottom of body, DOM already ready)
+(function(){
+  // Hide all pages first
+  var pages = document.querySelectorAll(".page");
+  for(var i=0;i<pages.length;i++){
+    pages[i].style.display="none";
+    pages[i].classList.remove("on");
+  }
+  // Show home
   var hp = document.getElementById("page-home");
   if(hp){ hp.style.display="block"; hp.classList.add("on"); }
-  renderLessons();
-  renderH();
-  // (initialized in DOMContentLoaded)
-  renderRoutineBlocks("soloBlocks", soloDay);
-  renderRoutineBlocks("dadBlocks", dadDay);
-  renderRoutineBlocks("wkndBlocks", wkndDay);
-  renderHabitBuilder();
-  loadRoutineNotes();
-  bndLoad(); renderBoundaries();
-  htLoad(); renderHT();
-  nbLoad(); renderNB();
-  ibLoadSaved();
-  renderExercises("exA", exData.A);
-  renderExercises("exB", exData.B);
-  renderExercises("exC", exData.C);
-  renderWeekGrid();
-  renderFitTracker();
-  renderBDNF();
+  // Render each section safely
+  var fns = [
+    function(){ renderLessons(); },
+    function(){ renderH(); },
+    function(){ renderBudget(); },
+    function(){ htLoad(); renderHT(); },
+    function(){ nbLoad(); renderNB(); },
+    function(){ bndLoad(); renderBoundaries(); },
+    function(){ renderRoutineBlocks("soloBlocks", soloDay); },
+    function(){ renderRoutineBlocks("dadBlocks", dadDay); },
+    function(){ renderRoutineBlocks("wkndBlocks", wkndDay); },
+    function(){ renderHabitBuilder(); },
+    function(){ loadRoutineNotes(); },
+    function(){ ibLoadSaved(); },
+    function(){ renderExercises("exA", exData.A); renderExercises("exB", exData.B); renderExercises("exC", exData.C); },
+    function(){ renderWeekGrid(); renderFitTracker(); renderBDNF(); }
+  ];
+  fns.forEach(function(fn){ try{ fn(); } catch(e){ console.warn("Init error:", e.message); } });
+})();
 });
 
 // ── DAILY ROUTINE ────────────────────────────────────────────────
@@ -3459,11 +3464,14 @@ function renderPresets() {
     el.innerHTML = '<div style="font-size:12px;color:var(--mut)">All presets added.</div>';
     return;
   }
-  el.innerHTML = available.map(p => `
-    <div class="preset-chip" onclick='addPreset(${JSON.stringify(p).replace(/'/g,"&#39;")})'>
-      ${p.icon} ${p.name}
-    </div>
-  `).join('');
+  el.innerHTML = available.map(p => {
+    const idx = PRESETS.indexOf(p);
+    return '<div class="preset-chip" onclick="addPresetByIndex(' + idx + ')">' + p.icon + ' ' + p.name + '</div>';
+  }).join('');
+}
+
+function addPresetByIndex(idx) {
+  if (idx >= 0 && idx < PRESETS.length) addPreset(PRESETS[idx]);
 }
 
 function renderHT() {
