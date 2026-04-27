@@ -36,7 +36,6 @@ a{color:inherit;text-decoration:none}
 /* MAIN */
 .main{margin-left:var(--nav)}
 .page{display:none;padding:32px 28px 72px;max-width:780px;box-sizing:border-box}
-#page-home{display:block;}
 .page.on{display:block}
 @keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
@@ -2152,16 +2151,33 @@ a{color:inherit;text-decoration:none}
 <script>
 
 // ── CORE NAVIGATION ──────────────────────────────────────────────
+var _rendered = {};
 function go(id) {
+  // Show target page
   var ps = document.querySelectorAll('.page');
   for (var i = 0; i < ps.length; i++) ps[i].style.display = 'none';
   var t = document.getElementById('page-' + id);
   if (t) t.style.display = 'block';
+  // Update nav
   var ns = document.querySelectorAll('.nav-item');
   for (var j = 0; j < ns.length; j++) {
     ns[j].classList.remove('on');
     var oc = ns[j].getAttribute('onclick') || '';
     if (oc.indexOf("'" + id + "'") > -1) ns[j].classList.add('on');
+  }
+  // Lazy render on first visit
+  if (!_rendered[id]) {
+    _rendered[id] = true;
+    try {
+      if (id === 'lessons') renderLessons();
+      else if (id === 'habits') renderH();
+      else if (id === 'budget') renderBudget();
+      else if (id === 'tracker') { htLoad(); renderHT(); }
+      else if (id === 'nightbefore') { nbLoad(); renderNB(); }
+      else if (id === 'boundaries') { bndLoad(); renderBoundaries(); }
+      else if (id === 'routine') { renderRoutineBlocks('soloBlocks',soloDay); renderRoutineBlocks('dadBlocks',dadDay); renderRoutineBlocks('wkndBlocks',wkndDay); renderHabitBuilder(); loadRoutineNotes(); }
+      else if (id === 'fitness') { renderExercises('exA',exData.A); renderExercises('exB',exData.B); renderExercises('exC',exData.C); renderWeekGrid(); renderFitTracker(); renderBDNF(); }
+    } catch(e) { console.warn('Render error for', id, e.message); }
   }
   window.scrollTo(0, 0);
   var nav = document.getElementById('nav');
@@ -2178,12 +2194,22 @@ function toggleNav() {
 }
 
 function stab(id, btn) {
-  var page = btn.closest ? btn.closest('.page') : null;
-  var root = page || document;
-  var panels = root.querySelectorAll('.tp');
+  // Scope to the nearest page div
+  var root = btn;
+  while (root && !root.classList.contains('page')) {
+    root = root.parentElement;
+  }
+  if (!root) root = btn.parentElement;
+  // Hide all panels in this page
+  var panels = root ? root.querySelectorAll('.tp') : [];
   for (var i = 0; i < panels.length; i++) panels[i].classList.remove('on');
-  var par = btn.parentElement;
-  if (par) { var tabs = par.querySelectorAll('.tb'); for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('on'); }
+  // Deactivate all tabs in this tab group
+  var tabGroup = btn.parentElement;
+  if (tabGroup) {
+    var tabs = tabGroup.querySelectorAll('.tb');
+    for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('on');
+  }
+  // Show target panel
   var target = document.getElementById(id);
   if (target) target.classList.add('on');
   btn.classList.add('on');
@@ -2220,7 +2246,7 @@ function addPresetByIndex(idx) {
   if (idx >= 0 && idx < PRESETS.length) addPreset(PRESETS[idx]);
 }
 
-const DEFAULT_HABITS = [
+var DEFAULT_HABITS = [
   {
     id: 'h_workout', icon: '💪', name: 'Morning Workout',
     why: 'Every session rebuilds grey matter and spikes BDNF. This is not exercise — it is brain surgery you do yourself.',
@@ -2270,7 +2296,7 @@ const DEFAULT_HABITS = [
     freq: 'daily'
   },
 ];
-const PRESETS = [
+var PRESETS = [
   {icon:'🚬', name:'No Cigarettes Today', why:'Every pack costs your lungs, your BDNF gains, and $10.', stick:'You light up and the streak dies. $3,650/year gone. Your daughter watches you smoke.', freq:'daily'},
   {icon:'💊', name:'ADHD Meds / Treatment', why:'Treating the ADHD removes the need to self-medicate everything else.', stick:'Skip this and you run on deficit all day. Everything is harder than it needs to be.', freq:'weekdays'},
   {icon:'🧘', name:'5-Minute Breathwork', why:'Activates your parasympathetic system and lowers cortisol. 5 minutes of actual calm.', stick:'Skip it and your nervous system runs hot all day. The inner dog stays on edge.', freq:'daily'},
@@ -3120,7 +3146,7 @@ function ibLoadSaved() {
   } catch(e) {}
 }
 
-const NB_DATA = {
+var NB_DATA = {
   solo: [
     {
       id: 'tools', icon: '🔨', title: 'Tools & Safety Gear',
@@ -3231,15 +3257,15 @@ const NB_DATA = {
     },
   ]
 };
-const CATS = [
+var CATS = [
   { id:'self',         icon:'🧠', title:'With Myself',      desc:'Internal commitments' },
   { id:'work',         icon:'🔨', title:'At Work',          desc:'Job site standards' },
   { id:'relationships',icon:'🤝', title:'Relationships',    desc:'How others treat you' },
   { id:'daughter',     icon:'👧', title:'With My Daughter', desc:'Parenting commitments' },
   { id:'recovery',     icon:'💪', title:'Recovery',         desc:'Protecting the work' },
 ];
-const STATUS_LABELS = {'owned':{label:'Owned',class:'owned'},'needs-work':{label:'Needs Work',class:'needs-work'},'hard':{label:'Hard',class:'hard'}};
-const DEFAULT_BOUNDARIES = [
+var STATUS_LABELS = {'owned':{label:'Owned',class:'owned'},'needs-work':{label:'Needs Work',class:'needs-work'},'hard':{label:'Hard',class:'hard'}};
+var DEFAULT_BOUNDARIES = [
   // ── WITH MYSELF ──────────────────────────────────────────────
   {
     id:'b_smoke', cat:'self',
@@ -3414,69 +3440,11 @@ window.addEventListener('appinstalled', () => {
 // HABIT TRACKER — STICK-DRIVEN, ADHD-OPTIMIZED
 // ════════════════════════════════════════════════════════════════
 
-const HT_KEY = 'htHabits_v3';
-const HT_LOG_KEY = 'htLog_v3';
+var HT_KEY = 'htHabits_v3';
+var HT_LOG_KEY = 'htLog_v3';
 
 // Default habits pre-loaded — tailored to his profile
-const DEFAULT_HABITS = [
-  {
-    id: 'h_workout', icon: '💪', name: 'Morning Workout',
-    why: 'Every session rebuilds grey matter and spikes BDNF. This is not exercise — it is brain surgery you do yourself.',
-    stick: 'Skip this and your dopamine stays in the gutter all day. You will be irritable, scattered, and less present for your daughter.',
-    freq: 'daily'
-  },
-  {
-    id: 'h_protein', icon: '🍳', name: 'Protein Breakfast',
-    why: 'Your ectomorph metabolism burns muscle by 9am without it. Feed the engine or the engine eats itself.',
-    stick: 'Skip breakfast and you hit the job site running on fumes. Your focus crashes, your body catabolizes, and your afternoon is shot.',
-    freq: 'daily'
-  },
-  {
-    id: 'h_water', icon: '💧', name: '16oz Water on Wake',
-    why: 'Rehydration in the first 5 minutes is the cheapest cognitive performance boost available to you.',
-    stick: '2% dehydration measurably impairs your cognitive performance. You are already behind before you leave the house.',
-    freq: 'daily'
-  },
-  {
-    id: 'h_intention', icon: '🧭', name: 'Set One Daily Intention',
-    why: 'Your ADHD brain needs a target. Without one it drifts to the nearest dopamine source, which is never the right one.',
-    stick: 'No intention means the day happens TO you. You end it reactive, tired, and with nothing to show your wins log.',
-    freq: 'daily'
-  },
-  {
-    id: 'h_wins', icon: '📝', name: 'Wins Log Entry',
-    why: 'Your brain discounts everything you do right. Force it to see evidence of who you are becoming — one line at a time.',
-    stick: 'Skip this and your brain keeps its default narrative: that nothing is working. That story kills momentum faster than anything.',
-    freq: 'daily'
-  },
-  {
-    id: 'h_sabotage', icon: '🛑', name: 'Sabotage Check',
-    why: 'The self-sabotage circuit fires before you notice it. Catching it requires looking. 30 seconds is all it takes.',
-    stick: 'Skip the check and you miss the moment. Then you are explaining to yourself at midnight why something good just fell apart.',
-    freq: 'daily'
-  },
-  {
-    id: 'h_daughter', icon: '👧', name: 'Fully Present With Daughter',
-    why: 'She is building her model of what a man who shows up looks like. You are it. Every present moment is a deposit into her sense of safety.',
-    stick: 'Distracted, phone-in-hand dad teaches her that she is second priority. She will carry that. So will you.',
-    freq: 'daily'
-  },
-  {
-    id: 'h_sleep', icon: '😴', name: 'Phone Down by 9pm',
-    why: 'Sleep is when your brain builds muscle, consolidates learning, and restores dopamine. Protecting it protects everything else.',
-    stick: 'Every hour past 9pm costs you grey matter recovery, muscle growth, and tomorrow\'s focus. You are borrowing against your future self.',
-    freq: 'daily'
-  },
-];
 
-const PRESETS = [
-  {icon:'🚬', name:'No Cigarettes Today', why:'Every pack costs your lungs, your BDNF gains, and $10.', stick:'You light up and the streak dies. $3,650/year gone. Your daughter watches you smoke.', freq:'daily'},
-  {icon:'💊', name:'ADHD Meds / Treatment', why:'Treating the ADHD removes the need to self-medicate everything else.', stick:'Skip this and you run on deficit all day. Everything is harder than it needs to be.', freq:'weekdays'},
-  {icon:'🧘', name:'5-Minute Breathwork', why:'Activates your parasympathetic system and lowers cortisol. 5 minutes of actual calm.', stick:'Skip it and your nervous system runs hot all day. The inner dog stays on edge.', freq:'daily'},
-  {icon:'📵', name:'No Substances Today', why:'Every sober day is a vote for the person you are building. The brain heals in the gap.', stick:'One slip weakens the neural pathway you have been building. The craving wins that round.', freq:'daily'},
-  {icon:'💬', name:'Text Daughter at Lunch', why:'One message that says: you are in my mind even when I am at work.', stick:'She notices when you forget. So do you — at bedtime when the guilt hits.', freq:'weekdays'},
-  {icon:'🏃', name:'10-Minute Walk Outside', why:'Natural light + movement resets cortisol and boosts mood more than most people realize.', stick:'You sit inside all day, mood flatlines, and your evening is a write-off.', freq:'daily'},
-];
 
 // Log: { 'YYYY-MM-DD': { habitId: 'done'|'skip' } }
 let htHabits = [];
@@ -3710,10 +3678,6 @@ function renderPresets() {
   }).join('');
 }
 
-function addPresetByIndex(idx) {
-  if (idx >= 0 && idx < PRESETS.length) addPreset(PRESETS[idx]);
-}
-
 function renderHT() {
   renderStreakSummary();
   renderHabitCards();
@@ -3741,122 +3705,11 @@ renderHT();
 // ════════════════════════════════════════════════════════════════
 // NIGHT BEFORE CHECKLIST
 // ════════════════════════════════════════════════════════════════
-const NB_KEY = 'nbChecks_v1';
-const NB_MODE_KEY = 'nbMode_v1';
-const NB_CUSTOM_KEY = 'nbCustom_v1';
+var NB_KEY = 'nbChecks_v1';
+var NB_MODE_KEY = 'nbMode_v1';
+var NB_CUSTOM_KEY = 'nbCustom_v1';
 
 // Sections with items — each has a why (motivational) attached
-const NB_DATA = {
-  solo: [
-    {
-      id: 'tools', icon: '🔨', title: 'Tools & Safety Gear',
-      items: [
-        { id: 'tape',     label: 'Tape measure on belt',           why: 'The one you will need is always the one you forgot.' },
-        { id: 'pencils',  label: '2+ carpenter pencils in pouch',  why: 'Running to a truck for a pencil costs you more than the pencil.' },
-        { id: 'square',   label: 'Speed square in bag',            why: 'Every plumb, level, and 45 starts here.' },
-        { id: 'knife',    label: 'Utility knife — blade fresh',    why: 'A dull blade means more pressure, more slips, more trips to the ER.' },
-        { id: 'nails',    label: 'Nail bags stocked / gun nails loaded', why: 'Running out mid-run kills your rhythm and your reputation.' },
-        { id: 'boots',    label: 'Work boots by the door',         why: 'You will not find them at 5:45am. Put them there now.' },
-        { id: 'gloves',   label: 'Work gloves in belt bag',        why: 'Splinters and abrasions at your height add up fast over a career.' },
-        { id: 'glasses',  label: 'Safety glasses in bag',          why: 'One nail head. One chip. One eye. Not worth it.' },
-        { id: 'hearing',  label: 'Ear protection in bag',          why: 'Framing is loud. Your hearing is not replaceable.' },
-        { id: 'belt',     label: 'Tool belt fully loaded — hung by door', why: 'Scrambling for tools in the dark is how you leave stuff behind.' },
-      ]
-    },
-    {
-      id: 'site', icon: '📍', title: 'Site & Job Info',
-      items: [
-        { id: 'address',  label: 'Job site address saved in phone', why: 'Wrong turn at 5:30am costs you 20 minutes and your composure.' },
-        { id: 'contact',  label: 'Foreman / GC number in phone',   why: 'Site access issues happen. Have the number before you need it.' },
-        { id: 'plans',    label: 'Know what you are building tomorrow', why: 'Walking onto a site without a mental picture costs the crew time.' },
-        { id: 'gas',      label: 'Gas tank — check it now',        why: 'Running out of gas at 5:45am on the way to a job site is a specific kind of awful.' },
-        { id: 'weather',  label: 'Check tomorrow\'s weather',      why: 'Framing in Nevada heat or wind is a different job. Dress and hydrate accordingly.' },
-      ]
-    },
-    {
-      id: 'fuel', icon: '🍱', title: 'Food & Fuel',
-      items: [
-        { id: 'lunch',    label: 'Lunch packed and in fridge',     why: 'Fast food is $12 and 800 calories of the wrong thing. Your ectomorph body needs real food.' },
-        { id: 'snacks',   label: '2 snacks portioned and packed',  why: 'You need to eat every 3-4 hours at your output. Going without tanks your focus and your mood.' },
-        { id: 'water',    label: 'Water bottle filled and in fridge', why: 'Dehydration at 2% impairs cognitive performance. Nevada sun starts early.' },
-        { id: 'coffee',   label: 'Coffee prepped or set on timer', why: 'One less decision at 5:30am. Your ADHD brain thanks you.' },
-        { id: 'breakfast',label: 'Eggs and oats ready to make fast', why: 'Protein breakfast is non-negotiable. Remove every barrier to making it.' },
-      ]
-    },
-    {
-      id: 'mind', icon: '🧠', title: 'Mind & Admin',
-      items: [
-        { id: 'phone',    label: 'Phone on charger',               why: 'A dead phone on a job site is a liability — GPS, calls, emergencies.' },
-        { id: 'alarm',    label: 'Alarm set — time confirmed',     why: 'Do not assume. Confirm the time. Check AM not PM.' },
-        { id: 'intention',label: 'Tomorrow\'s intention written down', why: 'Your ADHD brain needs a target loaded before sleep. Set it now.' },
-        { id: 'worries',  label: 'Write down anything on your mind', why: 'Unloading worries onto paper before sleep reduces racing thoughts and improves sleep quality.' },
-        { id: 'wins',     label: 'Wins log filled for today',      why: 'You did things right today. Make your brain see it before it closes the books.' },
-        { id: 'sabotage', label: 'Sabotage check done',            why: 'End the day with eyes open. Tomorrow starts better when tonight ends honestly.' },
-        { id: 'clothes',  label: 'Work clothes laid out',          why: 'One less decision. Your morning self is operating on minimal RAM. Help him out.' },
-        { id: 'phone-down', label: 'Phone face-down after this',   why: 'The scroll starts with one tap and ends two hours later. You are up before 6am. Protect the sleep.' },
-      ]
-    },
-  ],
-  dad: [
-    {
-      id: 'tools-d', icon: '🔨', title: 'Tools & Safety Gear',
-      items: [
-        { id: 'tape-d',     label: 'Tape measure on belt',           why: 'The one you need is always the one you forgot.' },
-        { id: 'pencils-d',  label: '2+ carpenter pencils in pouch',  why: 'Running to a truck for a pencil costs you time in front of the crew.' },
-        { id: 'square-d',   label: 'Speed square in bag',            why: 'Every plumb, level, and 45 starts here.' },
-        { id: 'knife-d',    label: 'Utility knife — blade fresh',    why: 'A dull blade means more pressure, more slips.' },
-        { id: 'nails-d',    label: 'Nail bags stocked / gun nails loaded', why: 'Running out mid-run kills your rhythm.' },
-        { id: 'boots-d',    label: 'Work boots by the door',         why: 'You will not find them at 5:45am with a 9-year-old asking for breakfast.' },
-        { id: 'gloves-d',   label: 'Work gloves in belt bag',        why: 'Protect your hands — they are how you provide for her.' },
-        { id: 'glasses-d',  label: 'Safety glasses + ear pro in bag', why: 'One trip to urgent care means a day she does not have her dad.' },
-        { id: 'belt-d',     label: 'Tool belt loaded — hung by door', why: 'Morning with her is not the time to hunt for gear.' },
-      ]
-    },
-    {
-      id: 'site-d', icon: '📍', title: 'Site & Job Info',
-      items: [
-        { id: 'address-d',  label: 'Job site address saved in phone', why: 'Wrong turn when you are already running daughter-schedule late is a bad start.' },
-        { id: 'contact-d',  label: 'Foreman / GC number in phone',   why: 'Site access issues happen. Have the number.' },
-        { id: 'gas-d',      label: 'Gas tank — check it now',        why: 'Running out of gas when you have a school drop-off to make is a whole situation.' },
-        { id: 'weather-d',  label: 'Check tomorrow\'s weather',      why: 'Pack her a jacket or your own layers accordingly.' },
-        { id: 'pickup',     label: 'After-school pickup plan confirmed', why: 'She needs to know who is getting her and when. Uncertainty is anxiety for a 9-year-old.' },
-      ]
-    },
-    {
-      id: 'fuel-d', icon: '🍱', title: 'Your Food & Fuel',
-      items: [
-        { id: 'lunch-d',    label: 'Your lunch packed and in fridge', why: 'You cannot show up for her if you are running on empty by 2pm.' },
-        { id: 'snacks-d',   label: '2 snacks portioned and packed',  why: 'Every 3-4 hours. Non-negotiable at your output level.' },
-        { id: 'water-d',    label: 'Water bottle filled and in fridge', why: 'Nevada heat does not care that you had a busy morning.' },
-        { id: 'coffee-d',   label: 'Coffee prepped or set on timer', why: 'One less decision before you get her fed and out the door.' },
-        { id: 'breakfast-d',label: 'Eggs and oats ready to make fast', why: 'You need protein. She needs to see you take care of yourself.' },
-      ]
-    },
-    {
-      id: 'daughter', icon: '👧', title: 'Daughter Prep',
-      items: [
-        { id: 'her-bag',    label: 'Her backpack by the door — packed', why: 'Morning scramble for her stuff makes the whole morning chaotic for both of you.' },
-        { id: 'her-snack',  label: 'Her school snack packed',         why: 'She will ask for it. Have it ready. String cheese + apple = 2 minutes the night before.' },
-        { id: 'her-lunch',  label: 'Her lunch in the fridge',         why: 'School lunch lines are stressful. A packed lunch is one less thing she has to navigate.' },
-        { id: 'her-clothes',label: 'Her outfit chosen — let her pick', why: 'Giving her the choice the night before eliminates the 7am wardrobe negotiation.' },
-        { id: 'her-alarm',  label: 'Her alarm set if she uses one',   why: 'Teach her to take ownership of her morning. It builds her self-reliance.' },
-        { id: 'her-activity',label: 'Know her schedule tomorrow',     why: 'Any after-school activity, event, or anything she mentioned — check it now.' },
-        { id: 'her-question',label: 'Think of one real question to ask her in the morning', why: 'Not "how did you sleep?" — something real. She will remember that you asked.' },
-      ]
-    },
-    {
-      id: 'mind-d', icon: '🧠', title: 'Mind & Admin',
-      items: [
-        { id: 'phone-d2',    label: 'Phone on charger',              why: 'Dead phone on a job site with a kid at school is a liability.' },
-        { id: 'alarm-d',     label: 'Alarm set — earlier than usual', why: 'You need to be ready before she wakes. That means up first.' },
-        { id: 'intention-d', label: 'Tomorrow\'s intention — personal and dad', why: 'Two roles tomorrow. Name something for each. Work and her.' },
-        { id: 'wins-d',      label: 'Wins log — include something about her', why: 'You showed up for her today. Make your brain see that evidence.' },
-        { id: 'clothes-d',   label: 'Your work clothes laid out',    why: 'You are getting yourself AND her out the door. Remove every friction point you can.' },
-        { id: 'phone-down-d',label: 'Phone face-down after this',    why: 'She needs a regulated, rested dad tomorrow. That starts with sleep tonight.' },
-      ]
-    },
-  ]
-};
 
 let nbMode = 'solo';
 let nbChecks = {};    // { itemId: true/false }
@@ -4013,299 +3866,12 @@ renderNB();
 // ════════════════════════════════════════════════════════════════
 // INTENTION BUILDER
 // ════════════════════════════════════════════════════════════════
-const IB_KEY = 'savedIntention_v1';
+var IB_KEY = 'savedIntention_v1';
 let ibCurrentStep = 0;
 
 // Intention matrix — [dayType][challenge][win] = { text, why }
-const IB_MATRIX = {
-  work: {
-    focus: {
-      ship:     { text: "Today I lock in on <span>one task at a time</span> and do not move until it is done.", why: "Your ADHD brain scatters across 10 things and finishes none. One task. All the way through. That is the whole job." },
-      lead:     { text: "Today I <span>lead the crew</span> with intention — not just react to whatever is loudest.", why: "You were built to lead in chaos. Tomorrow, lead by choice — not by default." },
-      present:  { text: "Today I am <span>fully on the job site</span> — not in my head — until the tools are put down.", why: "The crew can feel when you are halfway somewhere else. Full presence is full leadership." },
-      pause:    { text: "Today I <span>pause once</span> before reacting to anything frustrating on site.", why: "One pause. One moment of choosing. That is the difference between a leader and a reactor." },
-      survive:  { text: "Today I <span>do my work and protect my peace</span> — whatever the site throws at me.", why: "Not every day is a breakthrough day. Some days holding the line IS the win." },
-      momentum: { text: "Today I show up on site and <span>prove to myself</span> I am the person I said I was.", why: "Every day you show up is evidence. Evidence stacks. Stacks become identity." }
-    },
-    urge: {
-      ship:     { text: "Today I <span>get through the work day clean</span> and deal with the urge by staying in motion.", why: "Idle hands and idle minds feed the urge. The job site is actually protective. Stay in it." },
-      lead:     { text: "Today I <span>lead from the front</span> — the version of me the urge wants to replace does not lead anything.", why: "The person who gives in is not the person who leads a crew. You cannot be both. Choose." },
-      present:  { text: "Today I <span>stay in the present moment</span> on site — the urge lives in the past and future, not the now.", why: "The craving is a story about what you need. Full presence in the work interrupts the story." },
-      pause:    { text: "Today when the urge hits, I <span>pause for 5 minutes</span> before I do anything.", why: "Cravings peak in 15-30 minutes then drop. The pause is the whole technique. Just pause." },
-      survive:  { text: "Today I <span>get to the end of the workday without giving in</span> — that is the entire win.", why: "Not a huge goal. Just today. Just the workday. That is enough." },
-      momentum: { text: "Today I ride out <span>one urge all the way through</span> and add it to my evidence.", why: "Every craving you survive weakens the neural pathway. You are literally rewiring by not giving in." }
-    },
-    sabotage: {
-      ship:     { text: "Today I <span>notice if I start pulling back</span> from something going well — and I stay anyway.", why: "The sabotage starts before you notice it. Name it when it shows up. Then stay." },
-      lead:     { text: "Today I <span>lead from the front</span> even when part of me wants to create friction and fall back.", why: "Your sabotage pattern loves chaos. Tomorrow, lead through it instead of into it." },
-      present:  { text: "Today I <span>stay with the good thing</span> — whatever it is — even when it feels unfamiliar.", why: "Good things feel dangerous to your nervous system. That feeling is the signal to stay — not run." },
-      pause:    { text: "Today when I feel the pull to blow something up, I <span>pause and name it out loud</span>.", why: "\"I notice I want to sabotage this.\" That one sentence activates your prefrontal cortex. Say it." },
-      survive:  { text: "Today I <span>do not break anything that is working</span> — even if part of me wants to.", why: "Sometimes the win is simply not destroying what you have built. Hold it." },
-      momentum: { text: "Today I <span>add one more brick</span> instead of pulling one out.", why: "You have been building. Every day you do not sabotage is construction. Keep building." }
-    },
-    anger: {
-      ship:     { text: "Today I <span>channel the heat into the work</span> — not into the crew.", why: "Your intensity is a tool. Directed at the lumber it builds things. Directed at people it burns them." },
-      lead:     { text: "Today I <span>lead with my hands, not my mouth</span> — the work speaks for me.", why: "When you are running hot, your best leadership is demonstration, not instruction." },
-      present:  { text: "Today I <span>check my temperature at every break</span> and manage it before it manages me.", why: "Level 3 is your window. Catch it there. Do not wait for Level 5 to notice you are fired up." },
-      pause:    { text: "Today before I respond to anything that irritates me, I <span>take one breath and check my level</span>.", why: "One breath. Level check. Then respond. That is the whole system. It works." },
-      survive:  { text: "Today I <span>end the workday without a regrettable reaction</span>. That is the win.", why: "High temperature + job site friction = landmines. Navigate them. Do not step on them." },
-      momentum: { text: "Today my <span>inner dog runs the work, not the crew</span>. Fierce where it belongs.", why: "That energy is real and it is valuable. Direct it at the job. That is what it was built for." }
-    },
-    presence: {
-      ship:     { text: "Today I am <span>fully on the site</span> — phone away, head in the plans, hands on the work.", why: "Half-presence is full liability on a job site. You. Here. Now." },
-      lead:     { text: "Today I <span>lead by being the most present person on site</span>.", why: "Presence is leadership. The person who is most there is the person everyone looks to." },
-      present:  { text: "Today I give the job site <span>my full attention from first hammer to last nail</span>.", why: "The work deserves the same presence you give your daughter. Show up for it the same way." },
-      pause:    { text: "Every time I catch myself drifting, I <span>come back to what is in front of me</span>.", why: "Noticing you drifted is not failure. It is the practice. Notice. Return. That is mindfulness." },
-      survive:  { text: "Today I <span>stay with the work</span> even when my brain wants to be somewhere else.", why: "The drift is neurological — ADHD. The return is a choice. Make it as many times as needed." },
-      momentum: { text: "Today I prove to myself that <span>I can be fully present when I choose to be</span>.", why: "This is a skill you are building. Each day of practice is a rep. Add one more today." }
-    },
-    good: {
-      ship:     { text: "Today I <span>keep the momentum going</span> — finish strong on the job site.", why: "Things are working. The only job now is not to get in your own way." },
-      lead:     { text: "Today I <span>lead like the person I am becoming</span> — because that person is here now.", why: "You do not need a crisis to lead. Lead on a good day. That is when it really counts." },
-      present:  { text: "Today I <span>stay in it and appreciate that things are working</span>.", why: "Your nervous system will look for the threat. There is not one today. Let that be true." },
-      pause:    { text: "Today I <span>notice what is going right</span> — and let myself feel it.", why: "Your brain discounts success by default. Tomorrow, make it see the evidence." },
-      survive:  { text: "Today I <span>protect what is working</span> and do not create problems that do not exist.", why: "Good days can get sabotaged too. Stay awake." },
-      momentum: { text: "Today I <span>add another brick</span>. Things are going well. Keep building.", why: "Momentum is not guaranteed. You earned this. Now use it." }
-    }
-  },
-  dad: {
-    focus: {
-      ship:     { text: "Today I <span>finish one meaningful thing for her</span> — fully, not halfway.", why: "She notices when you start things and do not follow through. Today, one thing all the way." },
-      lead:     { text: "Today I <span>lead her day</span> — with a plan, with calm, with full presence.", why: "Children feel the difference between a parent who is steering and one who is drifting. Steer." },
-      present:  { text: "Today when I am with her, <span>I am only with her</span>.", why: "She does not need a perfect dad. She needs a present one. That is all." },
-      pause:    { text: "Today I <span>pause before I react</span> to anything she does that tests my patience.", why: "She is 9. Her job is to test limits. Your job is to hold them without breaking. Pause first." },
-      survive:  { text: "Today I <span>get through the day as a regulated, present dad</span> — that is the entire win.", why: "Not heroic. Just there. Just steady. That is what she needs most." },
-      momentum: { text: "Today I <span>show her one version</span> of the man she is learning to trust.", why: "She is building her model of safety. Every day you show up, you add to it." }
-    },
-    urge: {
-      ship:     { text: "Today I <span>stay clean for her</span> — she deserves the version of me that is fully there.", why: "She can tell. Kids always can. The present, clear-eyed version is who she needs." },
-      lead:     { text: "Today I <span>lead her day from strength</span> — not from a depleted, compromised place.", why: "You cannot pour from an empty cup. Stay clean. Show up full." },
-      present:  { text: "Today I <span>choose presence over escape</span> — she is the reason.", why: "The urge offers a way out. She is the reason to stay in." },
-      pause:    { text: "Today when the urge hits, I <span>think of her first</span> — and pause for five minutes.", why: "Five minutes. Her face. That is the pause technique when she is in your life." },
-      survive:  { text: "Today I <span>make it through the day clean</span> because she is watching what strength looks like.", why: "She is learning from you what it means to carry hard things and keep going. Show her." },
-      momentum: { text: "Today I <span>add one more sober day</span> to the evidence of who I am becoming for her.", why: "Every clean day is a gift to her future — and yours." }
-    },
-    sabotage: {
-      ship:     { text: "Today I <span>stay in the good thing</span> — including this day with her.", why: "Good days with her are exactly what your nervous system wants to escape. Stay." },
-      lead:     { text: "Today I <span>lead through the discomfort</span> of things going well.", why: "Your system was wired for chaos. A good day with your daughter is safe. Let it be." },
-      present:  { text: "Today I <span>notice if I am creating friction</span> and choose connection instead.", why: "The sabotage with her looks like picking fights, checking out, or starting drama. Notice it." },
-      pause:    { text: "Today when I feel the pull to ruin a good moment, I <span>name it and stay</span>.", why: "\"I notice I want to sabotage this.\" Say it. Stay." },
-      survive:  { text: "Today I <span>do not break anything good</span> in my relationship with her.", why: "She is good. This day is good. Do not break it." },
-      momentum: { text: "Today I <span>stay — even when staying feels uncomfortable</span>.", why: "The discomfort of staying is smaller than the cost of leaving. Every time." }
-    },
-    anger: {
-      ship:     { text: "Today I <span>complete her day with steady hands</span> — no matter what the morning looked like.", why: "She does not need a perfect day. She needs it to end safe. You control the ending." },
-      lead:     { text: "Today I <span>manage my temperature before it enters the room with her</span>.", why: "She absorbs your nervous system. A regulated dad is the most protective thing in her world." },
-      present:  { text: "Today I <span>do the transition ritual</span> before I walk through the door to her.", why: "Shower. Change. 10 minutes. Do not bring the job site into her evening." },
-      pause:    { text: "Today I <span>check my level before every interaction with her</span>.", why: "Level 3 with her is already too high. Catch it at 2. The check takes 5 seconds." },
-      survive:  { text: "Today I <span>end her day without her seeing Level 5</span>. That is the whole win.", why: "She should not have to manage your temperature. That is your job, not hers." },
-      momentum: { text: "Today I <span>protect her from my heat</span> by processing it before I am with her.", why: "The work you do on yourself is the most loving thing you can do for her." }
-    },
-    presence: {
-      ship:     { text: "Today I <span>put the phone down</span> the moment she walks in — and it stays down.", why: "She knows when she is competing with the phone. She always loses that comparison quietly." },
-      lead:     { text: "Today I <span>lead her evening</span> — with attention, with a plan, with eyes on her.", why: "Presence is leadership in parenting. The most present parent wins." },
-      present:  { text: "Today I am <span>genuinely there</span> — not physically present but mentally somewhere else.", why: "She does not need your body in the room. She needs you in the room." },
-      pause:    { text: "Every time I drift tonight, I <span>come back to her</span>.", why: "The drift will happen — ADHD guarantees it. The return is the practice. Come back." },
-      survive:  { text: "Today I <span>stay off the phone during her time</span> — all of it.", why: "It is not that long. She is only 9 once. The phone will be there later." },
-      momentum: { text: "Today I <span>build one more memory with her</span> that she will carry.", why: "She is building her story of her dad. Make sure it includes this day." }
-    },
-    good: {
-      ship:     { text: "Today I <span>enjoy being her dad</span> — fully, without waiting for something to go wrong.", why: "Good days are allowed. Let this be one." },
-      lead:     { text: "Today I <span>lead from love</span> — not from effort, not from guilt, just from love.", why: "On the good days, that is all it takes. You have it. Use it." },
-      present:  { text: "Today I <span>soak in this day with her</span> — she will not be 9 again.", why: "This version of her is temporary. Be here for it." },
-      pause:    { text: "Today I <span>notice the good moments as they happen</span> — not just in hindsight.", why: "Your brain defaults to threat-scanning. Tomorrow, scan for the good instead." },
-      survive:  { text: "Today I <span>protect the good day</span> — do not create problems that do not exist.", why: "Good days can be sabotaged too. Stay awake to it." },
-      momentum: { text: "Today I <span>keep building the relationship</span> she will carry for the rest of her life.", why: "What you build with her now is the foundation she stands on forever." }
-    }
-  },
-  both: {
-    focus: {
-      ship:     { text: "Today I <span>finish strong at work</span> — then close that chapter and open hers.", why: "Two roles. Full effort in each. The key is the transition between them." },
-      lead:     { text: "Today I <span>lead on the job site and at home</span> — switching modes deliberately.", why: "You are the crisis leader AND the steady dad. Both are needed. Both are you." },
-      present:  { text: "Today I am <span>fully at work when I am at work</span> — and fully with her when I am with her.", why: "The secret to doing both well is doing only one at a time." },
-      pause:    { text: "Today I <span>pause at the transition</span> between work and her — shower, change, breathe, then show up.", why: "The transition ritual is not optional on days you carry both roles. Do it every time." },
-      survive:  { text: "Today I <span>get through work and get home to her in one piece</span> — that is the whole win.", why: "Some days the goal is simply: do not drop either ball. That is enough." },
-      momentum: { text: "Today I prove that <span>I can carry both</span> — the framer and the father.", why: "You were built to lead under pressure. This is just two kinds at once." }
-    },
-    urge: {
-      ship:     { text: "Today I <span>stay clean through work</span> and come home to her clear.", why: "She gets the real you, not the compromised version. That starts with how you handle the day." },
-      lead:     { text: "Today I <span>lead from strength</span> — at work and with her — not from a depleted place.", why: "Two demanding roles. Full strength required for both. Stay clean." },
-      present:  { text: "Today I <span>choose presence over escape</span> — at work and at home.", why: "The urge offers an exit. Both roles need you in the door. Stay." },
-      pause:    { text: "Today when the urge hits during the workday, I <span>pause — then think of her face at pickup</span>.", why: "She is at school right now waiting for pickup. That version of you is who she is getting. Choose him." },
-      survive:  { text: "Today I <span>make it to pickup clean</span> — everything else is secondary.", why: "One goal. Everything between now and pickup is in service of that." },
-      momentum: { text: "Today I <span>add one more day to the evidence</span> — for myself and for her.", why: "You are showing her what fighting for yourself looks like. Keep fighting." }
-    },
-    sabotage: {
-      ship:     { text: "Today I <span>finish the work day and come home</span> without creating chaos in either place.", why: "Two places to sabotage. Double the vigilance. Notice it in both." },
-      lead:     { text: "Today I <span>lead through both roles</span> without manufacturing a reason to fail at either.", why: "The sabotage loves a full day — lots of opportunities. Name it when it shows up." },
-      present:  { text: "Today I <span>stay in each moment</span> — work moment or her moment — without escaping either.", why: "Presence is the antidote to sabotage. You cannot sabotage what you are fully in." },
-      pause:    { text: "Today when I feel the pull to create friction — at work or with her — I <span>name it and stay</span>.", why: "Two environments, one pattern. Same response: name it, stay." },
-      survive:  { text: "Today I <span>end both roles without breaking anything good</span> in either.", why: "Work is good. She is good. Do not break either of them today." },
-      momentum: { text: "Today I <span>show up for both</span> — the full version of who I am becoming.", why: "Crisis leader and steady dad. Both. Today." }
-    },
-    anger: {
-      ship:     { text: "Today I <span>leave the job site heat at the transition</span> — shower, change, breathe — before her.", why: "She should not receive the temperature the crew gave you. The transition is the boundary." },
-      lead:     { text: "Today I <span>manage my heat on site</span> — and shed it in the car before I walk in.", why: "Two roles both require a regulated leader. You cannot be one and not the other." },
-      present:  { text: "Today I <span>check my level at the transition</span> — and only walk in when I am at a 2.", why: "The ritual is the answer. Do not skip it on the hard days — especially then." },
-      pause:    { text: "Today at every break on site, I <span>check my temperature</span> — and manage it before pickup.", why: "If you catch it at work, it does not follow you home to her." },
-      survive:  { text: "Today I <span>hold my cool at work</span> and <span>hold my cool at home</span>. Two wins.", why: "Hard day, two fronts. Navigate both without burning anything down." },
-      momentum: { text: "Today I <span>take the heat and transform it</span> — into effort at work, into patience with her.", why: "That energy does not disappear. Direct it. Work gets the fire. She gets the warmth." }
-    },
-    presence: {
-      ship:     { text: "Today I am <span>on the job site when I am there</span> — and I am only with her when I am with her.", why: "Full presence in each. Zero overlap. That is the whole system for doing both well." },
-      lead:     { text: "Today I <span>transition deliberately</span> — leave the site behind, arrive at home fully.", why: "The transition is where both roles get protected. Honor it." },
-      present:  { text: "Today I give <span>each role my undivided attention</span> while I am in it.", why: "You cannot be half at work and half with her. Be all of one, then all of the other." },
-      pause:    { text: "Today I use the <span>drive home as my transition</span> — radio off, deep breaths, intention for the evening set.", why: "The windshield time is not wasted. Use it to switch modes deliberately." },
-      survive:  { text: "Today I <span>show up fully — first at work, then at home</span>.", why: "Full presence in both is hard. It is also exactly who you said you wanted to be." },
-      momentum: { text: "Today I <span>prove I can hold both</span> — fully present at work and fully present with her.", why: "The version of you that does this exists. Show up as him today." }
-    },
-    good: {
-      ship:     { text: "Today I <span>have a good day at work and a good evening with her</span> — both, fully.", why: "Good days are allowed to be good all the way through. Let it." },
-      lead:     { text: "Today I <span>lead well in both places</span> — and notice that I am capable of it.", why: "On the good days, let yourself see the evidence. You are doing it." },
-      present:  { text: "Today I <span>soak in both</span> — the work I am good at and the daughter I love.", why: "This life you are building — today it is visible. Be in it." },
-      pause:    { text: "Today I <span>notice the good in both roles</span> as it happens.", why: "Your brain defaults to scanning for threats. Tomorrow, scan for the wins instead." },
-      survive:  { text: "Today I <span>protect the good day in both places</span> — do not create problems that do not exist.", why: "A good work day and a good daughter day in the same 24 hours is a gift. Do not wreck it." },
-      momentum: { text: "Today I <span>keep building in both directions</span> — framer and father — both.", why: "Momentum in both lives at once. That is what you have been working toward." }
-    }
-  },
-  off: {
-    focus: {
-      ship:     { text: "Today I <span>finish one thing I have been putting off</span> — all the way through.", why: "Days off with ADHD become days of drift. One completed thing anchors the whole day." },
-      lead:     { text: "Today I <span>lead my own day</span> — instead of letting the day lead me.", why: "Without a job site structure, the ADHD brain defaults to chaos or the couch. Lead yourself." },
-      present:  { text: "Today I am <span>fully in whatever I choose to do</span> — not half-in everything.", why: "A day off spent half-present is not rest. Choose one thing. Be in it." },
-      pause:    { text: "Today before I pick up my phone, I <span>name what I actually want to do with this day</span>.", why: "The phone makes the decision for you. Make it yourself first." },
-      survive:  { text: "Today I <span>rest on purpose</span> — not just by default.", why: "Intentional rest restores. Default rest leaves you feeling worse than when you started." },
-      momentum: { text: "Today I use this day to <span>invest in the person I am building</span> — one thing.", why: "Rest days are not off days. They are recovery days. Recover with intention." }
-    },
-    urge: {
-      ship:     { text: "Today I <span>fill the day with something that earns my own respect</span>.", why: "Empty days feed urges. A full, intentional day is the strongest craving defense you have." },
-      lead:     { text: "Today I <span>lead myself through the day clean</span> — no one else can do this part.", why: "This is the solo fight. You against the old pattern. Lead." },
-      present:  { text: "Today I <span>stay present in the day</span> — urges live in boredom and mental drift.", why: "Stay in the moment. The urge needs the mental wander to take hold." },
-      pause:    { text: "Today when the urge comes — and it will — I <span>pause for 20 minutes first</span>.", why: "20 minutes. Every craving peaks and drops in that window. Wait it out." },
-      survive:  { text: "Today I <span>get to the end of this day clean</span>. That is the only goal.", why: "Not a big goal. Not forever. Just today. Just this one day." },
-      momentum: { text: "Today I <span>add one more clean day to the streak</span>. The chain does not break today.", why: "Look at what you have built. Do not break it today." }
-    },
-    sabotage: {
-      ship:     { text: "Today I <span>do one thing that moves me forward</span> — and I do not undo it.", why: "Days off are when the sabotage gets creative. One forward move. Protect it." },
-      lead:     { text: "Today I <span>lead this day</span> — even without the structure of work to hold me.", why: "Self-leadership on unstructured days is the hardest kind. It is also the most important." },
-      present:  { text: "Today I <span>stay with the good things</span> this day offers.", why: "A rest day is good. Let it be good. Do not create chaos to make it feel familiar." },
-      pause:    { text: "Today when I feel the urge to blow something up, I <span>write it down first</span>.", why: "Naming it on paper interrupts the circuit. Write it. Then decide." },
-      survive:  { text: "Today I <span>end the day having not broken anything</span> that is working.", why: "Rest days are when the sabotage finds its openings. Close them." },
-      momentum: { text: "Today I <span>rest and protect what I have built</span> — both are part of the work.", why: "Building includes protecting. Today is a protection day." }
-    },
-    anger: {
-      ship:     { text: "Today I <span>use this day to decompress</span> — so I am not carrying last week into next week.", why: "Unprocessed heat from the week accumulates. Today is the pressure release valve." },
-      lead:     { text: "Today I <span>process what is frustrating me</span> — so it does not run my week.", why: "Unacknowledged anger becomes background noise that colors everything. Name it today." },
-      present:  { text: "Today I <span>let the body and mind settle</span> — movement, fresh air, no agenda.", why: "Your nervous system has been running hot. Today is the cool-down. Let it happen." },
-      pause:    { text: "Today I <span>move my body hard enough to metabolize the heat</span>.", why: "Exercise is the fastest way to process stored anger neurologically. Run it out." },
-      survive:  { text: "Today I <span>rest without picking fights that do not need to happen</span>.", why: "High temperature on a day off creates problems that did not exist. Let the day be quiet." },
-      momentum: { text: "Today I <span>reset</span> — so Monday gets a version of me that is not running on fumes.", why: "You cannot lead next week on this week's leftovers. Refill today." }
-    },
-    presence: {
-      ship:     { text: "Today I <span>choose one thing and give it my full attention</span> — not ten things at 10%.", why: "Days off + ADHD = scattered half-presence in everything. Pick one. Be in it completely." },
-      lead:     { text: "Today I <span>design my own day</span> — instead of falling into whatever the phone offers.", why: "Self-led rest is restorative. Phone-led rest is draining. Lead the day." },
-      present:  { text: "Today I <span>put the phone in another room for two hours</span> and just exist.", why: "Two hours. No notifications. Your nervous system does not know what to do with quiet. Teach it." },
-      pause:    { text: "Today I <span>notice what actually restores me</span> — and do that thing.",  why: "Not what you default to. What actually helps. Pay attention to the difference." },
-      survive:  { text: "Today I <span>rest without the phone running the show</span>.", why: "Real rest requires disconnection. The phone is not rest. It is stimulation wearing rest's clothes." },
-      momentum: { text: "Today I <span>rest in a way I am proud of</span> — so I wake up tomorrow restored.", why: "The quality of your rest determines the quality of your next week. Invest in it." }
-    },
-    good: {
-      ship:     { text: "Today I <span>have a genuinely good day off</span> — and let it be exactly that.", why: "You have earned rest. Let the day be good without manufacturing a problem." },
-      lead:     { text: "Today I <span>lead myself into genuine restoration</span>.", why: "The person you are becoming knows how to rest as well as how to fight. Rest today." },
-      present:  { text: "Today I <span>soak in the day</span> — whatever it brings.", why: "Good days off are rare and underappreciated. Be in this one." },
-      pause:    { text: "Today I <span>notice that things are okay</span> — and let that be true.", why: "Your nervous system scans for threats. Today there are none. Notice that." },
-      survive:  { text: "Today I <span>protect the good day</span> — do not create problems that are not there.", why: "Good days can be sabotaged. Stay awake." },
-      momentum: { text: "Today I <span>rest like the person I am becoming rests</span> — with intention and without guilt.", why: "Rest is part of the build. You are not behind. You are recovering. Let yourself." }
-    }
-  }
-};
 
 // ibStep and ibAnswers initialized below
-let ibStep = 0;
-let ibAnswers = { 0: null, 1: null, 2: null };
-
-function ibPick(step, key, icon, label) {
-  ibAnswers[step] = { key, label };
-  // Highlight selected
-  const stepEl = document.getElementById('ib-step-' + step);
-  if (stepEl) stepEl.querySelectorAll('.ib-opt').forEach(b => b.classList.remove('selected'));
-  // Move to next step or result
-  if (step < 2) {
-    ibStep = step + 1;
-    ibShowStep(ibStep);
-  } else {
-    ibShowResult();
-  }
-}
-
-function ibShowStep(n) {
-  for (let i = 0; i <= 3; i++) {
-    const el = document.getElementById('ib-step-' + (i === 3 ? 'result' : i));
-    if (el) el.classList.toggle('active', i === n || (n === 3 && i === 3));
-  }
-  // Handle result step index
-  if (n === 3) {
-    document.getElementById('ib-step-result').classList.add('active');
-  }
-  // Update dots
-  for (let i = 0; i < 3; i++) {
-    const dot = document.getElementById('ibdot-' + i);
-    if (!dot) continue;
-    dot.classList.remove('active', 'done');
-    if (i < n) dot.classList.add('done');
-    else if (i === n) dot.classList.add('active');
-  }
-}
-
-function ibBack() {
-  if (ibStep > 0) { ibStep--; ibShowStep(ibStep); }
-}
-
-function ibShowResult() {
-  const dayType = ibAnswers[0] ? ibAnswers[0].key : 'work';
-  const challenge = ibAnswers[1] ? ibAnswers[1].key : 'focus';
-  const win = ibAnswers[2] ? ibAnswers[2].key : 'momentum';
-  const matrix = IB_MATRIX[dayType] || IB_MATRIX.work;
-  const row = (matrix[challenge] || matrix.focus);
-  const result = (row[win] || row.momentum);
-  document.getElementById('ib-result-text').innerHTML = result.text;
-  document.getElementById('ib-result-why').textContent = result.why;
-  // Reset save button
-  const btn = document.getElementById('ib-save-btn');
-  if (btn) { btn.classList.remove('saved'); btn.textContent = 'Save This Intention ✓'; }
-  ibStep = 3;
-  ibShowStep(3);
-}
-
-function ibSave() {
-  const text = document.getElementById('ib-result-text');
-  const plainText = text ? text.textContent : '';
-  try { localStorage.setItem(IB_KEY, plainText); } catch(e) {}
-  const btn = document.getElementById('ib-save-btn');
-  if (btn) { btn.classList.add('saved'); btn.textContent = 'Saved ✓'; }
-  // Show in saved display
-  const disp = document.getElementById('ib-saved-display');
-  const dispText = document.getElementById('ib-saved-text');
-  if (disp && dispText) { dispText.textContent = plainText; disp.classList.add('show'); }
-}
-
-function ibReset() {
-  ibStep = 0;
-  ibAnswers = { 0: null, 1: null, 2: null };
-  ibShowStep(0);
-}
-
-function ibLoadSaved() {
-  try {
-    const saved = localStorage.getItem(IB_KEY);
-    const disp = document.getElementById('ib-saved-display');
-    const dispText = document.getElementById('ib-saved-text');
-    if (saved && disp && dispText) {
-      dispText.textContent = saved;
-      disp.classList.add('show');
-    }
-  } catch(e) {}
-}
 
 ibLoadSaved();
 
@@ -4313,141 +3879,8 @@ ibLoadSaved();
 // ════════════════════════════════════════════════════════════════
 // BOUNDARIES
 // ════════════════════════════════════════════════════════════════
-const BND_KEY = 'myBoundaries_v1';
+var BND_KEY = 'myBoundaries_v1';
 
-const DEFAULT_BOUNDARIES = [
-  // ── WITH MYSELF ──────────────────────────────────────────────
-  {
-    id:'b_smoke', cat:'self',
-    statement:'I do not use cigarettes, alcohol, or cannabis as a way to cope with hard emotions.',
-    why:'Every time I reach for a substance instead of sitting with the feeling, I delay my own healing and deepen the dependency. My brain deserves better tools.',
-    script:'"I am feeling overwhelmed right now. I am going to take a walk instead."',
-    consequence:'If I break this — I do not shame spiral. I ask what emotion I was trying to escape, and I write it down.',
-    status:'needs-work'
-  },
-  {
-    id:'b_phone', cat:'self',
-    statement:'I do not scroll my phone after 9pm.',
-    why:'My brain needs sleep to rebuild grey matter, restore dopamine, and consolidate what I am learning. The scroll steals that from me every night.',
-    script:'"Phone down. Done for the night."',
-    consequence:'If I pick it up — I put it face down immediately and do not negotiate with myself.',
-    status:'needs-work'
-  },
-  {
-    id:'b_sabotage', cat:'self',
-    statement:'When something good is happening, I do not manufacture a reason to destroy it.',
-    why:'Self-sabotage is my nervous system trying to return to what feels familiar. Familiar is not the same as good. I choose good even when it feels uncomfortable.',
-    script:'"I notice I want to blow this up. That is the signal to stay — not run."',
-    consequence:'If I catch myself mid-sabotage — I name it out loud and ask what I am actually afraid of.',
-    status:'hard'
-  },
-  {
-    id:'b_wins', cat:'self',
-    statement:'I do not dismiss my own progress.',
-    why:'My ADHD brain discounts everything I do right and amplifies everything I do wrong. I will not let that narrative run unchecked. I am building something real.',
-    script:'"I did something right today. I am writing it down."',
-    consequence:'If I catch myself saying "it does not count" or "anyone could do that" — I write down the win anyway.',
-    status:'needs-work'
-  },
-
-  // ── AT WORK ──────────────────────────────────────────────────
-  {
-    id:'b_disrespect', cat:'work',
-    statement:'I do not accept being spoken to with disrespect on any job site — from crew, foreman, or anyone else.',
-    why:'I lead by example. Tolerating disrespect teaches others that I have no floor. I have a floor. It is called self-respect.',
-    script:'"I am going to need you to speak to me differently. I am happy to work through this when the tone changes."',
-    consequence:'If it continues — I walk away from the conversation. I do not escalate. I do not absorb. I disengage.',
-    status:'needs-work'
-  },
-  {
-    id:'b_overcommit', cat:'work',
-    statement:'I do not say yes to extra work or favors I genuinely cannot deliver on.',
-    why:'Overcommitting is people-pleasing in disguise. It feels like generosity but it breeds resentment, missed deadlines, and a reputation I cannot back up.',
-    script:'"I cannot take that on right now. I want to do it right and I am already at capacity."',
-    consequence:'If I catch myself about to over-promise — I pause 24 hours before committing to anything significant.',
-    status:'needs-work'
-  },
-  {
-    id:'b_temperature', cat:'work',
-    statement:'I do not react at Level 4 or 5 on the job site.',
-    why:'At Level 4 my prefrontal cortex is partially offline. Anything I say or do from that place has a high chance of damaging something I have worked to build.',
-    script:'"I need five minutes." Then I walk away and physically move until the heat drops.',
-    consequence:'If I blow past this — I own it directly and quickly. No excuse. Just: "I came in too hot. That was on me."',
-    status:'hard'
-  },
-
-  // ── RELATIONSHIPS ─────────────────────────────────────────────
-  {
-    id:'b_relationship_respect', cat:'relationships',
-    statement:'I do not maintain relationships where disrespect, manipulation, or chaos is the default.',
-    why:'My nervous system was calibrated to chaos early. That means toxic feels familiar — even comfortable. Familiar is not the same as healthy.',
-    script:'"This dynamic is not working for me. I need it to change or I need some distance from it."',
-    consequence:'If nothing changes after I name it — I create distance. I do not explain myself endlessly.',
-    status:'hard'
-  },
-  {
-    id:'b_anger', cat:'relationships',
-    statement:'I do not use anger as a first response in conflict.',
-    why:'Anger is my inner dog doing boundary work that words should be doing. When I lead with anger, I lose the conversation and often something more important.',
-    script:'"I am heated right now. I am going to come back to this when I can say what I mean."',
-    consequence:'If I lose my temper — I repair quickly and directly. No justification. Just honest acknowledgment.',
-    status:'hard'
-  },
-  {
-    id:'b_isolation', cat:'relationships',
-    statement:'I do not retreat into isolation when things get hard.',
-    why:'Isolation feels like protection but it is actually accelerant. Every problem I take into isolation grows. Every problem I bring to a trusted person shrinks.',
-    script:'"I am struggling. I am going to reach out to someone instead of disappearing."',
-    consequence:'If I catch myself going quiet and withdrawing — I send one text to one person. That is the whole boundary.',
-    status:'hard'
-  },
-
-  // ── WITH MY DAUGHTER ─────────────────────────────────────────
-  {
-    id:'b_phone_dad', cat:'daughter',
-    statement:'My phone goes face-down the moment my daughter walks in — and stays there during her time.',
-    why:'She is building her understanding of whether she matters to me. The phone tells her the answer every single time I choose it over her.',
-    script:'"Phone down. She is here."',
-    consequence:'If I pick it up during her time — I put it away immediately without making it a big deal. No performance. Just correction.',
-    status:'needs-work'
-  },
-  {
-    id:'b_temperature_dad', cat:'daughter',
-    statement:'I do not bring the job site temperature into her space.',
-    why:'She is 9. She should not have to manage my emotional state. My heat is mine to process before I walk through her door.',
-    script:'"Shower. Change. Ten minutes. Then I am hers."',
-    consequence:'If I feel above a Level 3 before pickup — I do the transition ritual. Non-negotiable.',
-    status:'needs-work'
-  },
-  {
-    id:'b_honesty_dad', cat:'daughter',
-    statement:'I do not lie to my daughter — about who I am, what I am working on, or what I am struggling with.',
-    why:'She will learn who I am either from me or from life. I want her to learn it from me — honestly, age-appropriately, and with grace. That builds trust that lasts.',
-    script:'"Dad is working on something hard right now. But I am working on it."',
-    consequence:'If I catch myself hiding something that she should know age-appropriately — I find a simple honest way to say it.',
-    status:'owned'
-  },
-
-  // ── RECOVERY ─────────────────────────────────────────────────
-  {
-    id:'b_permission', cat:'recovery',
-    statement:'I do not wait for permission to take up space, lead, or become who I am building myself to be.',
-    why:'Waiting for permission was the pattern that kept me stuck. The permission was never coming. I am the only one who can give it — and I am giving it now.',
-    script:'"I do not need to be assigned this. I am stepping up."',
-    consequence:'If I catch myself waiting — I ask: what is the smallest step I can take right now without anyone\'s approval? Then I take it.',
-    status:'needs-work'
-  },
-  {
-    id:'b_crisis', cat:'recovery',
-    statement:'When things get really hard, I reach out for help instead of reaching for a substance.',
-    why:'Substances offer exit. Recovery offers growth. I have been through enough to know the difference now. The exit always costs more than the stay.',
-    script:'"I am struggling. I am calling someone."',
-    consequence:'If the urge is strong — I use the crisis plan in the Need Help Now section. I do not white-knuckle alone.',
-    status:'needs-work'
-  },
-];
-
-let boundaries = [];
 
 function bndLoad() {
   try {
@@ -4509,19 +3942,7 @@ function addBoundary() {
   renderBoundaries();
 }
 
-const CATS = [
-  { id:'self',         icon:'🧠', title:'With Myself',      desc:'Internal commitments' },
-  { id:'work',         icon:'🔨', title:'At Work',          desc:'Job site standards' },
-  { id:'relationships',icon:'🤝', title:'Relationships',    desc:'How others treat you' },
-  { id:'daughter',     icon:'👧', title:'With My Daughter', desc:'Parenting commitments' },
-  { id:'recovery',     icon:'💪', title:'Recovery',         desc:'Protecting the work' },
-];
 
-const STATUS_LABELS = {
-  'owned':      { label:'✓ Owned',       class:'owned' },
-  'needs-work': { label:'⟳ Needs Work',  class:'needs-work' },
-  'hard':       { label:'⚠ Hard',        class:'hard' },
-};
 
 function renderBndSummary() {
   const el = document.getElementById('bndSummary');
@@ -4603,27 +4024,39 @@ renderBoundaries();
 
 
 
-// ── INIT (script runs at bottom of body, DOM already ready) ──────
+// ── INIT ─────────────────────────────────────────────────────────
 (function() {
+  // Step 1: hide all pages, show home
   var ps = document.querySelectorAll('.page');
   for (var i = 0; i < ps.length; i++) ps[i].style.display = 'none';
   var home = document.getElementById('page-home');
   if (home) home.style.display = 'block';
-  function safe(fn) { try { fn(); } catch(e) { console.warn('init:', e.message); } }
-  safe(function(){ renderLessons(); });
-  safe(function(){ renderH(); });
-  safe(function(){ renderBudget(); });
-  safe(function(){ htLoad(); renderHT(); });
-  safe(function(){ nbLoad(); renderNB(); });
-  safe(function(){ bndLoad(); renderBoundaries(); });
-  safe(function(){ renderRoutineBlocks('soloBlocks', soloDay); });
-  safe(function(){ renderRoutineBlocks('dadBlocks', dadDay); });
-  safe(function(){ renderRoutineBlocks('wkndBlocks', wkndDay); });
-  safe(function(){ renderHabitBuilder(); });
-  safe(function(){ loadRoutineNotes(); });
-  safe(function(){ ibLoadSaved(); });
-  safe(function(){ renderExercises('exA', exData.A); renderExercises('exB', exData.B); renderExercises('exC', exData.C); });
-  safe(function(){ renderWeekGrid(); renderFitTracker(); renderBDNF(); });
+
+  // Step 2: render dynamic sections with individual error protection
+  var renders = [
+    function(){ renderLessons(); },
+    function(){ renderH(); },
+    function(){ renderBudget(); },
+    function(){ htLoad(); renderHT(); },
+    function(){ nbLoad(); renderNB(); },
+    function(){ bndLoad(); renderBoundaries(); },
+    function(){ renderRoutineBlocks('soloBlocks', soloDay); },
+    function(){ renderRoutineBlocks('dadBlocks', dadDay); },
+    function(){ renderRoutineBlocks('wkndBlocks', wkndDay); },
+    function(){ renderHabitBuilder(); },
+    function(){ loadRoutineNotes(); },
+    function(){ ibLoadSaved(); },
+    function(){ renderExercises('exA', exData.A); },
+    function(){ renderExercises('exB', exData.B); },
+    function(){ renderExercises('exC', exData.C); },
+    function(){ renderWeekGrid(); },
+    function(){ renderFitTracker(); },
+    function(){ renderBDNF(); }
+  ];
+
+  for (var r = 0; r < renders.length; r++) {
+    try { renders[r](); } catch(e) { console.warn('Init step ' + r + ' failed:', e.message); }
+  }
 }());
 
 </script>
